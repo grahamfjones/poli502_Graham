@@ -1,0 +1,132 @@
+---
+title: "R code for Data Science for Beginners"
+subtitle: " Day 5: Individual Exercise"
+author: "Graham Jones"  
+date: "2025-09-20"  
+format: pdf
+---
+
+# Clean up your workspace 
+```{r}
+rm(list=ls(all=TRUE)) # delete all objects in the environment 
+cat("\014") # clear the console screen
+library(tidyverse)
+```
+
+# Load the data 
+```{r}
+world_data = read.csv("~/Downloads/world.csv")
+```
+
+Remember that Quarto uses a relative path so always save your data in the same folder (or under the same folder) with your Quarto code. 
+
+## Democracy and female representation 
+
+Do democratic countries (`democ_regime == "Yes"`) have better female representation than non-democratic countries? Please answer this question by showing some graphs to assess the relationship between these two variables. 
+
+
+### Initial data clean up
+
+Analyze y
+```{r}
+summary(world_data $ women09) # look at summary statistics for female representation
+```
+
+Analyze x
+```{r}
+summary(world_data $ democ_regime) # look at summary of regime type (Yes/No)
+```
+
+Note: There are some missing values. Labels are not intuitive. So, we will deal with these two first.
+
+
+### Create a smaller data set that omits NA observations.
+```{r}
+women_data <- world_data[ is.na(world_data $ women09) == FALSE & 
+                           is.na(world_data $ democ_regime) == FALSE, ] # keep only rows without missing values
+```
+
+Let's make sure that we did this correctly. 
+
+```{r}
+summary(women_data $ women09) # check again, no missing values
+summary(women_data $ democ_regime)  # check regime variable again
+```
+
+We can see that NA cases have been correctly removed. 
+
+
+### Re-labeling the values
+```{r}
+women_data $ regime_label <- factor(women_data $ democ_regime, 
+                              levels = c("Yes", "No"),
+                              labels = c("Democracy", "Autocracy"))
+
+summary(women_data $ regime_label) # check the new labels
+rm(world_data) # The original dataset is no longer needed.
+```
+
+## Q1: Describe Y (numerically and graphically) 
+
+### Numerical summary
+
+
+```{r}
+summary(women_data $ women09) # numerical summary of female representation
+```
+
+
+### Graphical summary
+
+
+```{r}
+ggplot(women_data, aes(x=women09)) +
+  geom_histogram(bins = 30) # histogram of female representation
+```
+
+
+## Q2: Describe X (numerically and graphically) 
+
+
+### Numerical summary (frequency table)
+
+
+```{r}
+summary(women_data$regime_label) # frequency count of regime type
+```
+
+
+### Graphical summary (bar chart)
+
+
+```{r}
+ggplot(women_data, aes(x = regime_label)) +
+  geom_bar()  # bar chart of countries by regime type
+```
+
+
+## Q3: Describe X-Y graphically
+
+### Histograms
+
+
+```{r}
+ggplot(women_data, aes(women09))+
+  geom_histogram(bins=30) +
+  theme(axis.text.x = element_text(size = 14)) +
+  xlab("Fem Representation") +
+  ylab("Number of Countries") +
+  theme_bw() +
+  facet_grid(.~regime_label) # histograms split by regime type
+```
+
+### Box-plots
+
+
+```{r}
+ggplot(women_data, aes(x = regime_label, y = women09))+
+  geom_boxplot() +
+  xlab("Political System") +
+  ylab("Fem Representation") # boxplot comparing democracies and autocracies
+```
+
