@@ -1,0 +1,487 @@
+# ##-------------------------------------------------------------------------
+# ## R code for POLI502 Lab, week 5: Individual Exercises
+# ## Written by: Howard Liu
+# ##-------------------------------------------------------------------------
+# 
+# 
+# # 1. Exploring a data set -------------------------------------------------
+# 
+# # We have learned several functions to explore a data set, including
+# 
+# dim(world.data)
+# head(world.data)
+# tail(world.data)
+# 
+# # There are some other functions we can use. For example, the names
+# # function tells us the names of all the variables included in a data frame
+# # object. 
+# 
+# names(world.data)
+# 
+# # The colnames function gives us the same results as well. 
+# 
+# colnames(world.data)
+# 
+# 
+# # We can also apply the summary function without specifying variable
+# # names. Then, R will provide the summary of ALL the variables in cluded
+# # in a data frame object. 
+# 
+# summary(world.data)
+# 
+# 
+# # The str() function tells us the structure of a data frame object, 
+# # meaning that it tells us which variables are factor, which ones are
+# # numerical, which ones are logical, etc.
+# 
+# str(world.data)
+# 
+# #clean up my workplace
+```{r}
+rm(list=ls(all=TRUE))
+cat("\014")
+library(tidyverse)
+library(dplyr)
+```
+#upload data from computer
+```{r}
+world.data = read.csv("C:/Users/gjone/OneDrive/Documents/poli502_graham/Data/world.csv")
+```
+# # 2. Summarizing categorical variables ------------------------------------
+# 
+# 
+# # The output from the str function above tells us that there are many factor
+# # variables in the data set. For example, the democ_regime variable 
+# # is a factor variable (nominal-level). Summarize the information contained
+# # in this variable by creating a frequency table. 
+# 
+# 
+#
+## frequency table for democratic regime variable
+```{r}  
+table(world.data $ democ_regime) 
+```
+# 
+# 
+# # The typerel variable is another factor variable. 
+# # This variable measures predominant religion in a given country. 
+# # Create a frequency table for this variable. 
+# 
+# frequency table for religion variable 
+```{r}
+table(world.data $ typerel) 
+```
+# 
+# 
+# # Make this frequency table vertical using the data.frame function
+# 
+# convert frequency table into vertical format
+```{r}
+data.frame( table(world.data $ typerel) )
+```
+# 
+# 
+# # We have seen in the lecture that we often report RELATIVE frequencies
+# # as well as raw frequencies. Relative frequencies can be obtained by 
+# # dividing each of the raw frequency values by the total number of 
+# # observations. Let's see how we do this. 
+# 
+# 
+# # To do so, it is better if we create a new object that stores the 
+# # frequency table. Let's create an object called ft.colony that is
+# # equal to the vertical frequency table for the colony variable, 
+# # as follows. 
+# 
+ # frequency table for colony variable
+```{r}
+ft.colony <- data.frame( table(world.data $ colony) )
+```
+# 
+# # To make sure we did this correctly, let's take a look
+# 
+```{r}
+ft.colony # view the table
+```
+# 
+# 
+# # We can see that the first column, Var1, records all possible
+# # values and the second column, Freq, records the raw frequency. 
+# 
+# 
+# # To convert the raw frequencies into relative frequencies, we divide
+# # the values by the sum of Freq.
+# # As we learned before, we use the sum function to calculate the sum of
+# # all the values, as follows. 
+# 
+```{r}
+sum( ft.colony $ Freq ) # calculate total count of countries
+```
+# # The relative frequencies are Freq divided by sum( ft.colony $ Freq )
+# 
+```{r}
+ft.colony $ Freq / sum( ft.colony $ Freq )# convert raw frequencies to relative frequencies
+```
+# # Alternatively, we can use the prop.table function to obtain the 
+# # same results
+```{r}
+prop.table(ft.colony $ Freq) # alternative way to get proportions
+```
+# # We would want to convert these further into percentages. 
+# # To make a ratio into a percentage, we simply multiply it by 100
+```{r} 
+prop.table(ft.colony $ Freq) * 100 # convert proportions into percentages
+```
+# 
+# # We would want to round these numbers to simplify the representation. 
+# # As we leanred two weeks ago, we use the round function to do that. 
+```{r}
+round(prop.table(ft.colony $ Freq) * 100, digits = 2) # round percentages to 2 decimals
+```
+# 
+# # Finally, we want to insert these numbers into the frequency table 
+# # we created and stored in ft.colony. 
+# 
+```{r} 
+ft.colony # create frequency table again
+```
+# # How do we do it? 
+# # We do this by creating a new column in the ft.colony object. 
+# # As we learned last week, we use the $ symbol to create a new column
+# # in a data frame object, as follows
+# 
+# ft.colony $ Percent <- round(prop.table(ft.colony $ Freq) * 100, digits = 2)
+# 
+# 
+# # Now, our frequency table contains three columns, as follows
+# 
+# ft.colony
+# 
+# # Finally, we may want to change the column name for the first column
+# # from "Var1" to something more intuitive. 
+# # To do so, we use the colnames function, as follows
+# 
+# colnames(ft.colony)[colnames(ft.colony) == "Var1"] <- "Colonizer"
+# 
+# ft.colony
+# 
+# 
+# # We can see that about 33% of the countries in the world are former colonies
+# # of the UK, about 15% of them are former colonies of France, about 10% of them
+# # were never colonized, etc. 
+# 
+# 
+# # To summarize the steps to create a frequency table:
+# 
+```{r}
+ft.colony <- data.frame( table(world.data $ colony) ) # create frequency table again
+ft.colony $ Percent <- round(prop.table(ft.colony $ Freq) * 100, digits = 2) # add percentage column
+colnames(ft.colony)[colnames(ft.colony) == "Var1"] <- "Colonizer" # rename first column
+ft.colony
+``` 
+# 
+# 
+# # Create a frequency table for the typerel variable
+# 
+```{r}
+data.frame(table(world.data $ typerel)) # frequency table for typerel variable
+```
+# 
+# # Which religion is the most "popular" in the world? 
+# # That is, what is the mode of the "typerel" variable?
+
+Roman Catholic is the most popular in the world.
+# 
+# 
+# # What is the percentage of countries where muslim is the majority? 
+# 
+26.18%
+# 
+# 
+# # Create a frequency table for democ_regime
+# 
+```{r}
+data.frame(table(world.data $ democ_regime))# frequency table for democratic regime variable
+```
+# 
+# # What percentage of countries have a democratic regime?
+# 
+60.3%
+# 
+# 
+# # Create a bar chart to summarize the typerel variable
+# 
+```{r}
+
+ggplot(world.data, aes(x = typerel)) +   
+  geom_bar() 
+
+# bar chart for typerel with label^
+
+# 
+# 
+# # Create a bar chart to summarize the democ_regime variable
+# 
+
+ggplot(world.data, aes(x = democ_regime)) +
+  geom_bar() # bar chart for democratic regime variable
+```
+# 
+# 
+# 
+# 
+# 
+# # 3. Making ggplot graphs look nicer --------------------------------------
+# 
+# # We have seen how to create a graph using the ggplot function
+# 
+# ggplot(world.data, aes(x = colony)) + geom_bar()
+# 
+# # The command above is the easiest way to produce a simple ggplot
+# # graph, but we would want to modify some parts of the graph, such as
+# # axis labels. For example, the graph above currently says 
+# # "colony" on the x-axis and "count" on the y-axis. We may want to 
+# # modify them so they can be more informative. 
+# 
+# 
+# # When we want to modify graphs, we usually create a ggplot graph
+# # and store it into an object. Then we gradually add some features
+# # to modify them. The above command can be re-written as follows:
+# 
+# 
+# g <- ggplot(world.data)  # Tells R which data frame contains the variable to plot
+# g <- g + aes(x = colony) # Tells R which variable to plot
+# g <- g + geom_bar()      # Tells R what type of graph we want
+# g                        # Tells R to show the contents of the object g
+# 
+# # Now that we stored the graph into an object called g, we can 
+# # modify graph appearances by adding more options.
+# 
+# # To change the label for the x-axis, we use the xlab option, as follows
+# 
+# g <- g + xlab("Colony of Which Country?")
+# g
+# 
+# # Similarly, we can modify the label for the y-axis
+# 
+# g <- g + ylab("Number of countries")
+# g
+# 
+# # If you want to change the text size for axes, do
+# 
+# g <- g + theme(axis.text.x = element_text(size = 12))
+# g
+# 
+# 
+# # We can save this graph as a PDF file using the ggsave function. 
+# 
+# ggsave(file = "colony_bar.pdf", width = 10, height = 8)
+# 
+# # The file option specifies the file name of the PDF file
+# # you want to create. 
+# # The width and height option control the width and height of the
+# # PDF file, respectively. 
+# # Once you save a graph in a PDF, you can easily embed it in a 
+# # Word document simply by drag & drop.
+# 
+# 
+# # To summarize what we have done so far,
+# 
+# g <- ggplot(world.data)
+# g <- g + aes(x = colony)
+# g <- g + geom_bar()
+# g <- g + xlab("Colony of Which Country?")
+# g <- g + ylab("Number of countries")
+# g <- g + theme(axis.text.x = element_text(size = 12))
+# g
+# ggsave(file = "colony_bar.pdf", width = 10, height = 8)
+# 
+# 
+# 
+# 
+# # Create a bar chart for the typerel variable, and save it as a PDF file
+# 
+# WRITE YOUR COMMANDS HERE
+```{r}
+ggplot(world.data, aes(x = typerel)) +
+  geom_bar() +
+  labs(x = "Religion Type", y = "# of Countries")
+ggsave("typerel1_nar.pdf") # save the typerel bar chart as PDF
+
+```
+# 
+# 
+# 
+# 
+# 
+# # 4. Summarizing numerical variables --------------------------------------
+# 
+# # There are two variables in the data set, gini04 and gini08, that measure 
+# # the levels of economic inequality in a country numerically. 
+# # These are what's called Gini coefficient (Gini index or Gini ratio), which
+# # takes values between 0 and 1 (or 0% and 100%). A value of 0 corresponds to
+# # the "perfect equality" case, where everyone in a country is earning the same 
+# # amount of money, whereas a value of 1 (100%) corresponds to the maximal 
+# # inequality case, where one person is earning ALL the money in a country and
+# # everyone else is earning nothing. The gini04 variable is from the year 2004
+# # whereas the gini08 variable is from the year 2008. 
+# 
+# 
+# # Numerically summarize the gini04 variable. 
+# # That is, calculate and present the measures for central tendency and 
+# # those for dispersion. 
+# 
+# WRITE YOUR COMMANDS HERE
+```{r}
+summary(world.data$gini04)  # numerical summary of gini04 variable
+sd(world.data$gini04, na.rm = TRUE) # standard deviation of gini04 variable
+```
+# 
+# 
+# # Numerically summarize the gini08 variable. 
+# # That is, calculate and present the measures for central tendency and 
+# # those for dispersion. 
+# 
+# WRITE YOUR COMMANDS HERE
+```{r}
+summary(world.data$gini08) # numerical summary of gini08 variable
+sd(world.data$gini08, na.rm = TRUE)# standard deviation of gini08 variable
+```
+# 
+# 
+# # Compare the distributions of gini04 and gini08. Do you think that the 
+# # level of economic inequality is getting worse, getting better, or neither?
+# # Why or why not? 
+# 
+# # Note: I'm not asking why it is getting better, worse, or neither; 
+# #       I'm asking on what basis you can conclude that it's getting better or worse. 
+# 
+# 
+# 
+# WRITE YOUR ANSWER HERE
+# They look very similar in regard to mean median and dispersion. Neither show a fundemental shift between 2004 and 2008 so it looks like inequality is stagnant (neither getting better or worse). Both statsistics do not show any big changes across the years measured.
+# 
+# 
+# # Create a histogram of gini04
+# # Modify the axis labels accordingly to make them informative and intuitive.
+# # Save the graph as a PDF file.
+# 
+# WRITE YOUR COMMANDS HERE
+# histogram for gini04 variable
+```{r}  
+ggplot(world.data, aes(x = gini04)) +
+  geom_histogram(fill = "skyblue", color = "black") +
+  labs(x = "2004 Gini Coefficient", y = "# of Countries")
+ggsave("gini04_hist.pdf")
+```
+# 
+# 
+# # Create a histogram of gini08
+# # Modify the axis labels accordingly to make them informative and intuitive.
+# # Save the graph as a PDF file.
+# 
+# histogram for gini08 variable
+```{r}
+ggplot(world.data, aes(x = gini08)) +
+  geom_histogram( fill = "lightgreen", color = "black") +
+  labs(x = "2008 Gini Coefficient", y = "# of Countries")
+ggsave("gini08_hist.pdf", width = 10, height = 8)
+```
+# 
+# 
+# 
+# # Compare the distributions of gini04 and gini08 graphically by 
+# # placing the two PDF files you just created side by side. 
+# # Do you confirm the conclusion you derived previously? 
+# 
+# 
+# They show extremely similar shapes and values. The graphs confirm the previous conlcusion in that the overal level of economic inequality stayed the same from 2004 to 2008.
+# 
+# 
+# 
+# 
+# # As we saw in the lecture, we sometimes create histograms for different
+# # values of a nominal-level variable. For example, we may want to create
+# # separate histograms of gini04 for countries in different regions.
+# 
+# 
+# # To do so, we use the facet_wrap option, as follows.
+# 
+# 
+# COPY & PASTE THE CODE YOU WROTE TO PRODUCE HISTOGRAM FOR gini04 HERE
+# histogram of gini04 with labels
+```{r}
+ggplot(world.data, aes(x = gini04)) +
+  geom_histogram( fill = "skyblue", color = "black") +
+  labs(x = "2004 Gini Coefficient", y = "# of Countries")
+ggsave("gini04_hist.pdf")
+```
+# 
+# g <- g + facet_wrap( ~ region)
+# g
+# 
+# 
+# # We can see that Scandinavian countries and Western European countries
+# # have, on average, lower Gini coefficients (= they are more egalitarian),
+# # whereas countries in South America have relatively high values. 
+# 
+# 
+# 
+# 
+# # Create separate histograms of women09 for countries in different regions.
+# 
+# 
+# histogram of women09 variable
+```{r}
+g <- ggplot(world.data, aes(x = women09)) +
+  geom_histogram(binwidth = 5, fill = "purple", color = "black") +
+  labs(x = "Women in Parliament (%) - 2009", y = "Number of Countries")
+g <- g + facet_wrap(~ region)
+g
+```
+# 
+# 
+# 
+# 
+# # We may want to do the same using numerical methods.
+# # That is, we may want to obtain central tendencies and dispersions for
+# # a numerical variable for different groups. 
+# 
+# # To do so, we use the by function. 
+# # The by function take the following form
+# # 
+# # by( VARIABLE_YOU_WANT_TO_ANALYZE, GROUP, FUNCTION )
+# # 
+# # That is, you provide 
+# # (1) an interval-level variable you want to summarize first, 
+# # (2) a comma
+# # (3) a nominal variable that separates observations into groups
+# # (4) a comma
+# # (5) a function you want to apply (such as summary, mean, median, sd, etc.)
+# 
+# # For example, to obtain numerical summaries of gini04 for different regions, 
+# # we write
+# 
+# by(world.data $ gini04, world.data $ region, summary)
+# 
+# 
+# 
+# # Calculate the standard deviation of gini04 for different regions using
+# # the by function
+# # Hint: we still need to take care of the missing value problem. 
+# #       Use the na.rm = TRUE option. 
+# 
+# 
+# WRITE YOUR COMMAND HERE
+# standard deviation of gini04 by region
+```{r}
+by(world.data$gini04, world.data$region, sd, na.rm = TRUE)
+```
+# 
+# 
+# # Which region has the smallest dispersion? 
+# 
+# 
+# WRITE YOUR ANSWER HERE
+# The region with the smallest dispersion of gini04 is Western Europe because its countries are more similar to each other with regard to income inequality.
+# 
+# # End of file
