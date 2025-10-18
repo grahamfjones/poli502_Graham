@@ -1,0 +1,281 @@
+---
+title: "R code for Poli502 Midterm"
+author: "Graham Jones"
+date: "`r Sys.Date()`"
+format: pdf
+---
+
+```{r}
+# Load required libraries
+library(ggplot2)
+```
+
+```{r}
+# ============================================================================
+# TASK 1: Load the Data
+# ============================================================================
+setwd("C:/Users/gjone/OneDrive/poli502_jones")
+world.data <- read.csv("world.csv", header = TRUE)
+head(world.data)
+```
+
+```{r}
+# ============================================================================
+# TASK 2: Creating Frequency Table
+# ============================================================================
+ft.oecd <- as.data.frame(table(world.data$oecd))
+ft.oecd$Percentage <- (ft.oecd$Freq / sum(ft.oecd$Freq)) * 100
+colnames(ft.oecd)[1] <- "OECD Member?"
+ft.oecd$Percentage <- round(ft.oecd$Percentage, 2)
+print(ft.oecd)
+```
+
+TASK 3: Answers from the table
+
+A\) Number of OECD members - Read from table
+
+B\) Number of non-members - Read from table
+
+C\) Percentage of members - Read from table
+
+D\) Percentage of non-members - Read from table
+
+```{r}
+# ============================================================================
+# TASK 4: Bar Chart for OECD Membership
+# ============================================================================
+ggplot(world.data, aes(x = oecd)) +
+  geom_bar(fill = "steelblue") +
+  xlab("OECD membership") +
+  ylab("Number of countries") +
+  theme_minimal()
+```
+
+```{r}
+# ============================================================================
+# TASK 5: List Specific Countries
+# ============================================================================
+oecd_members <- world.data$country[world.data$oecd == "Yes"]
+print("Three OECD member countries:")
+print(head(oecd_members, 3))
+
+non_democracies <- world.data$country[world.data$democ_regime == "No"]
+print("Three non-democratic countries:")
+print(head(non_democracies, 3))
+```
+
+```{r}
+# ============================================================================
+# TASK 6: GDP Statistics
+# ============================================================================
+summary(world.data$gdp_10_thou)
+range(world.data$gdp_10_thou, na.rm = TRUE)
+sd(world.data$gdp_10_thou, na.rm = TRUE)
+```
+
+TASK 7: Skewness Answer:
+
+The distribution is positively skewed (skewed to the right)
+
+Because mean \> median
+
+```{r}
+# ============================================================================
+# TASK 8: Histogram for Per Capita GDP
+# ============================================================================
+ggplot(world.data, aes(x = gdp_10_thou)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "black") +
+  xlab("Per capita GDP (in 10,000 US dollars)") +
+  ylab("Number of countries") +
+  theme_minimal()
+```
+
+```{r}
+# ============================================================================
+# TASK 9: Countries with GDP > $40,000
+# ============================================================================
+world.data$country[world.data$gdp_10_thou > 4]
+```
+
+```{r}
+# ============================================================================
+# TASK 10: Calculate Standard Error
+# ============================================================================
+mean_gdp <- mean(world.data$gdp_10_thou, na.rm = TRUE)
+sd_gdp <- sd(world.data$gdp_10_thou, na.rm = TRUE)
+n <- sum(!is.na(world.data$gdp_10_thou))
+se_gdp <- sd_gdp / sqrt(n)
+print(paste("Standard Error of GDP:", round(se_gdp, 5)))
+```
+
+```{r}
+# ============================================================================
+# TASK 11: 95% Confidence Interval
+# ============================================================================
+lower_ci <- mean_gdp - 1.96 * se_gdp
+upper_ci <- mean_gdp + 1.96 * se_gdp
+cat("Mean GDP:", round(mean_gdp, 4), "\n")
+cat("Standard Error:", round(se_gdp, 5), "\n")
+cat("95% CI: [", round(lower_ci, 4), ",", round(upper_ci, 4), "]\n")
+```
+
+```{r}
+# ============================================================================
+# TASK 12: Histograms by Democracy Status (with NA)
+# ============================================================================
+ggplot(world.data, aes(x = gdp_10_thou)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "black") +
+  facet_wrap(~ democ_regime) +
+  xlab("Per capita GDP (in 10,000 US dollars)") +
+  ylab("Number of countries") +
+  theme_minimal()
+```
+
+```{r}
+# ============================================================================
+# TASK 13: Improved Histograms (Clean Data)
+# ============================================================================
+# Remove missing values
+dem.gdp <- world.data[!is.na(world.data$democ_regime), ]
+cat("Original rows:", nrow(world.data), "\n")
+cat("Filtered rows:", nrow(dem.gdp), "\n")
+
+# Create better labels
+dem.gdp$dem.dum <- ifelse(dem.gdp$democ_regime == "Yes", "Democracy", "Autocracy")
+table(dem.gdp$dem.dum)
+
+# Draw improved histograms
+ggplot(dem.gdp, aes(x = gdp_10_thou)) +
+  geom_histogram(bins = 30, fill = "steelblue", color = "black") +
+  facet_wrap(~ dem.dum) +
+  xlab("Per capita GDP (in 10,000 US dollars)") +
+  ylab("Number of countries") +
+  theme_minimal()
+```
+
+```{r}
+# ============================================================================
+# TASK 14: Mean GDP for Democracies with 95% CI
+# ============================================================================
+democracies <- dem.gdp[dem.gdp$dem.dum == "Democracy", ]
+mean_dem <- mean(democracies$gdp_10_thou, na.rm = TRUE)
+sd_dem <- sd(democracies$gdp_10_thou, na.rm = TRUE)
+n_dem <- sum(!is.na(democracies$gdp_10_thou))
+se_dem <- sd_dem / sqrt(n_dem)
+lower_ci_dem <- mean_dem - 1.96 * se_dem
+upper_ci_dem <- mean_dem + 1.96 * se_dem
+
+cat("\n=== DEMOCRACIES ===\n")
+cat("Mean GDP:", round(mean_dem, 4), "\n")
+cat("Standard Deviation:", round(sd_dem, 4), "\n")
+cat("Standard Error:", round(se_dem, 5), "\n")
+cat("95% CI: [", round(lower_ci_dem, 4), ",", round(upper_ci_dem, 4), "]\n")
+```
+
+```{r}
+# ============================================================================
+# TASK 15: Mean GDP for Autocracies with 95% CI
+# ============================================================================
+autocracies <- dem.gdp[dem.gdp$dem.dum == "Autocracy", ]
+mean_auto <- mean(autocracies$gdp_10_thou, na.rm = TRUE)
+sd_auto <- sd(autocracies$gdp_10_thou, na.rm = TRUE)
+n_auto <- sum(!is.na(autocracies$gdp_10_thou))
+se_auto <- sd_auto / sqrt(n_auto)
+lower_ci_auto <- mean_auto - 1.96 * se_auto
+upper_ci_auto <- mean_auto + 1.96 * se_auto
+
+cat("\n=== AUTOCRACIES ===\n")
+cat("Mean GDP:", round(mean_auto, 4), "\n")
+cat("Standard Deviation:", round(sd_auto, 4), "\n")
+cat("Standard Error:", round(se_auto, 5), "\n")
+cat("95% CI: [", round(lower_ci_auto, 4), ",", round(upper_ci_auto, 4), "]\n")
+```
+
+```{r}
+# ============================================================================
+# TASK 16: Bayes Theorem - Rain Probability
+# ============================================================================
+P_R <- 0.3
+P_C_given_R <- 0.95
+P_C_given_not_R <- 0.25
+
+cat("\n=== BAYES THEOREM ===\n")
+cat("Given:\n")
+cat("P(Rain) =", P_R, "\n")
+cat("P(Clouds | Rain) =", P_C_given_R, "\n")
+cat("P(Clouds | No Rain) =", P_C_given_not_R, "\n\n")
+
+P_C <- (P_C_given_R * P_R) + (P_C_given_not_R * (1 - P_R))
+cat("P(Clouds) =", P_C, "\n\n")
+
+P_R_given_C <- (P_C_given_R * P_R) / P_C
+
+cat("Result:\n")
+cat("P(Rain | Clouds) =", round(P_R_given_C, 4), "\n")
+cat("As percentage:", round(P_R_given_C * 100, 2), "%\n")
+```
+
+```{r}
+# ============================================================================
+# TASK 17: Bayesian Analysis with Beta Distribution
+# ============================================================================
+
+# Part (a): Prior mean and standard deviation
+a_prior <- 1.5
+b_prior <- 1.5
+
+prior_mean <- a_prior / (a_prior + b_prior)
+prior_variance <- (a_prior * b_prior) /
+  (((a_prior + b_prior)^2) * (a_prior + b_prior + 1))
+prior_sd <- sqrt(prior_variance)
+
+cat("\n=== BAYESIAN ANALYSIS ===\n")
+cat("(a) Prior Mean:", round(prior_mean, 4), "\n")
+cat("    Prior SD:", round(prior_sd, 4), "\n\n")
+
+# Part (b): Prior probability that θ < 0.6
+prior_prob <- pbeta(0.6, a_prior, b_prior)
+cat("(b) P(θ < 0.6):", round(prior_prob, 4), "\n\n")
+
+# Part (c): Likelihood
+n_yes <- 37
+n_no <- 13
+cat("(c) Likelihood: f(x|θ) ∝ θ^37 × (1-θ)^13\n\n")
+
+# Part (d): Posterior distribution
+a_post <- a_prior + n_yes
+b_post <- b_prior + n_no
+cat("(d) Posterior distribution: Beta(", a_post, ",", b_post, ")\n\n")
+
+# Part (e): Plot prior and posterior distributions
+theta <- seq(0.01, 0.99, 0.01)
+prior <- dbeta(theta, a_prior, b_prior)
+posterior <- dbeta(theta, a_post, b_post)
+
+plot(theta, posterior,
+     type = "l",
+     col = "blue",
+     lwd = 2,
+     xlab = "theta",
+     ylab = "Density",
+     main = "Prior and Posterior Distributions",
+     ylim = c(0, max(posterior, prior)))
+
+lines(theta, prior, lty = 2, col = "red", lwd = 2)
+
+legend("topleft",
+       legend = c("Posterior", "Prior"),
+       col = c("blue", "red"),
+       lty = c(1, 2),
+       lwd = 2)
+
+# Part (f): Explanation
+cat("(e) Plot created successfully!\n\n")
+cat("(f) Explanation:\n")
+cat("The plot shows how our belief about θ (student satisfaction) updated\n")
+cat("from a weak prior (flat, centered at 0.5) to a strong posterior\n")
+cat("(peaked around 0.74) after observing 37 Yes and 13 No responses.\n")
+cat("This demonstrates Bayesian learning: data refines our beliefs.\n")
+
+cat("\n=== ALL TASKS COMPLETED ===\n")
+```
