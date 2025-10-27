@@ -1,0 +1,119 @@
+---
+title: "HW Week 10 Jones"
+format: pdf
+author: "Jones Graham"
+---
+```{r}
+library(ggplot2)
+library(tidyverse)
+ID <- c(1:6) 
+```
+# Create numeric vector 1 through 6
+
+```{r}
+Race <- c("black", "white", "black", "hispanic", "white", "white")
+```
+# Create character vector for race
+
+```{r}
+class(Race) # Check object type of Race
+is.factor(Race) # Check if Race is a factor
+is.character(Race) # Check if Race is a character vector
+is.logical(Race) # Check if Race is logical
+```
+## It is a character vector.
+```{r}
+Voted_For_Obama <- c(TRUE, TRUE, TRUE, FALSE, FALSE, TRUE) 
+```
+# Create logical vector for Obama vote
+
+```{r}
+class(Voted_For_Obama) 
+```
+# Check type of Voted_For_Obama
+```{r}
+is.logical(Voted_For_Obama) 
+```
+# Confirm it is logical
+# # It is a logical vector.
+```
+```{r}
+Party_ID <- c("Dem", "Dem", "Dem", "Rep", "Ind", "Rep") 
+```
+# Create party ID vector
+
+```{r}
+Income_Level <- c("High", "Low", "Low", "High", "High", "Low") 
+```
+# Create income level vector
+
+```{r}
+Approval <- c(70, 80, 68, 20, 10, 60) 
+```
+# Create numeric approval ratings  
+
+```{r}
+vote.data <- data.frame(ID, Race, Voted_For_Obama, Party_ID, Income_Level, Approval) 
+```
+# Combine vectors into data frame
+
+```{r}
+is.factor(vote.data$Race)
+```
+# Check if Race column became a factor in data frame
+
+```{r}
+length(vote.data$Voted_For_Obama[vote.data$Voted_For_Obama == TRUE])
+```
+# Count TRUE (Obama voters)
+
+```{r}
+vote.data$Voted_For_Obama[vote.data$Party_ID == "Ind"] 
+```
+# Check if Independent voted for Obama
+
+```{r}
+vote.white <- vote.data[vote.data$Race == "white", ] 
+``` 
+# Subset data to include only white respondents
+
+```{r}
+vote.white[, 3] 
+```
+# Show 3rd column (Voted_For_Obama) of subset
+
+```{r}
+length(vote.white$Voted_For_Obama[vote.white$Voted_For_Obama == TRUE])
+```
+# Count TRUE in white subset
+
+```{r}
+Country_ID <- seq(from = 1, to = 7)
+Country_Name <- c("United States", "United Kingdom", "Japan", "China", "Brazil", "Germany", "Egypt")
+
+Regime_Type <- c("Democracy", "Democracy", "Democracy", "Dictatorship",
+                 "Democracy", "Democracy", "Dictatorship")
+
+GDP_PC <- c(51163, 39367, 46838, 6070, 11347, 41376, 3115)
+
+EU_Member <- c(FALSE, TRUE, FALSE, FALSE, FALSE, TRUE, FALSE)
+
+my.data <- data.frame(Country_ID, Country_Name, Regime_Type, GDP_PC, EU_Member)
+```
+
+```{r}
+my.data$Population <- c(318946000, 64105654, 127090000, 1367420000, 
+                        203322000, 80781000, 87354300)
+
+my.data$GDP <- my.data$GDP_PC * my.data$Population 
+# Add population column
+``` 
+
+```{r}
+my.data$Is_Democracy <- my.data$Regime_Type == "Democracy"  
+# Create logical column for democracies
+```
+
+```{r}
+my.data # Display full data frame
+```
