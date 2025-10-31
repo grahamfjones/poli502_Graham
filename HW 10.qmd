@@ -1,0 +1,225 @@
+---
+title: "HW10_Jones"
+editor: visual
+format:
+  pdf:
+    geometry: margin=1in
+    fontsize: 12pt
+    include-in-header: |
+      \sloppy
+      \setlength{\emergencystretch}{3em}
+---
+
+```{r}
+#| include: false
+# Wrap printed output to page width
+options(width = 70)          # try 60–80 as needed
+
+```
+
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+Install the Packages.
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+# install.packages("kableExtra")   # run once
+library(knitr)
+library(kableExtra)
+```
+
+Create a frequency table for democ_regime
+
+```{r}
+world.data <- read.csv("world.csv")
+table(world.data$democ_regime)
+```
+
+Create a frequency table for typerel variable
+
+```{r}
+table(world.data$typerel)
+
+```
+
+Make the typerel frequency table vertical using data.frame
+
+```{r}
+data.frame(table(world.data$typerel))
+```
+
+Create a complete frequency table for typerel with percentages
+
+```{r}
+ft.typerel <- data.frame(table(world.data$typerel))
+ft.typerel$Percent <- round(prop.table(ft.typerel$Freq) * 100, digits = 2)
+colnames(ft.typerel)[colnames(ft.typerel) == "Var1"] <- "Religion"
+```
+
+Display the table
+
+```{r}
+ft.typerel
+kbl(ft.typerel, booktabs = TRUE) |>
+  kable_styling(latex_options = "scale_down")
+```
+
+Which religion is the most "popular" in the world? ##Christian, as it is the mode of the typerel variable and has the highest frequency.
+
+What is the percentage of countries where muslim is the majority? ANswer: 26.18%
+
+Create a frequency table for Democ_regime with percentages.
+
+```{r}
+ft.democ <- data.frame(table(world.data$democ_regime))
+ft.democ$Percent <- round(prop.table(ft.democ$Freq) * 100, digits = 2)
+colnames(ft.democ)[colnames(ft.democ) == "Var1"] <- "Regime_Type"
+ft.democ
+```
+
+What percentage of countries have a democratic regime? Answer: 60.32
+
+Create a bar chart to summarize the typerel variable
+
+```{r}
+ggplot(world.data, aes(x = typerel)) + geom_bar()
+```
+
+Create a bar chart to summarize the democ_regime variable
+
+```{r}
+ggplot(world.data, aes(x = democ_regime)) + geom_bar()
+```
+
+Create a bar chart for typerel variable and save as a PDF
+
+```{r}
+g <- ggplot(world.data)
+g <- g + aes(x = typerel)
+g <- g + geom_bar()
+g <- xlab("Predominant Religion")
+g <- ylab("Number of Countries")
+g <- g + theme(axis.text.x = element_text(size = 12, angle = 45, hjust = 1))
+g
+ggsave(file = "typerel_bar.pdf", width = 10, height = 8)
+```
+
+Numerically summarize the gini04 variable.
+
+Measures of central tendency for gini04 variable (mean and median)
+
+```{r}
+mean(world.data$gini04, na.rm = TRUE)
+median(world.data$gini04, na.rm = TRUE)
+```
+
+Measures of dispersion for gini04
+
+```{r}
+sd(world.data$gini04, na.rm = TRUE)
+var(world.data$gini04, na.rm = TRUE)
+range(world.data$gini04, na.rm = TRUE)
+IQR(world.data$gini04, na.rm = TRUE)
+```
+
+Complete summary for gini04 variable
+
+```{r}
+summary(world.data$gini04)
+```
+
+Numerically summarize the gini08 variable. #Measures of central tendency for gini08 variable (mean and median)
+
+```{r}
+mean(world.data$gini08, na.rm = TRUE)
+median(world.data$gini08, na.rm = TRUE)
+```
+
+Measures of dispersion for gini08
+
+```{r}
+sd(world.data$gini08, na.rm = TRUE)
+var(world.data$gini08, na.rm = TRUE)
+range(world.data$gini08, na.rm = TRUE)
+IQR(world.data$gini08, na.rm = TRUE)
+```
+
+Complete summary for gini08 variable
+
+```{r}
+summary(world.data$gini08)
+```
+
+Comparing the distributions of gini04 and gini08 #To see if economic inequality is getting better or worse, I would choose to compare the mean and medians of both variables. If the mean and median are higher for gini08 over gini04, then inequality is getting worse. #If they are lower, however, inequality is getting better. I think it would also help to look at the standard deviations to see if the dispersion has changed in any way. In comparing the ranges and IQRs, this can tell us if the extremes have either increased or decreased.
+
+Create a histogram of gini04
+
+```{r}
+g1 <- ggplot(world.data)
+g1 <- g1 + aes(x = gini04)
+g1 <- g1 + geom_histogram(bins = 20, fill = "steelblue", color = "black")
+g1 <- g1 + xlab("Gini Coefficient (2004)")
+g1 <- g1 + ylab("Number of Countries")
+g1 <- g1 + theme(axis.text = element_text(size = 12))
+g1
+ggsave(file = "gini04_histogram.pdf", width = 10, height = 8)
+```
+
+Create a histogram of gini08
+
+```{r}
+g1 <- ggplot(world.data)
+g1 <- g1 + aes(x = gini08)
+g1 <- g1 + geom_histogram(bins = 20, fill = "coral", color = "black")
+g1 <- g1 + xlab("Gini Coefficient (2008)")
+g1 <- g1 + ylab("Number of Countries")
+g1 <- g1 + theme(axis.text = element_text(size = 12))
+g1
+ggsave(file = "gini08_histogram.pdf", width = 10, height = 8)
+
+```
+
+Comparing the graphical distributions #With the two graphs next to each other, comparing the shapes, spreads of distribution, and centers becomes much easier. If the gini08 histogram is shifted to the right in comparison with the gini04, it again shows that inequality has increased. The shapes of distribution also show the skewness and if there are more countries with extremely inequality.
+
+Create separate histograms of gini04 for different regions
+
+```{r}
+g3 <- ggplot(world.data)
+g3 <- g3 + aes(x = gini04)
+g3 <- g3 + geom_histogram(bins = 15, fill = "steelblue", color = "black")
+g3 <- g3 + xlab("Gini Coefficient (2004)")
+g3 <- g3 + ylab("Number of Countries")
+g3 <- g3 + facet_wrap(~ region)
+g3<- g3 + theme(axis.text = element_text(size = 10))
+g3
+```
+
+Create separate histograms of women09 for different regions
+
+```{r}
+g4 <- ggplot(world.data)
+g4 <- g4 + aes(x = women09)
+g4 <- g4 + geom_histogram(bins = 15, fill = "purple", color = "black")
+g4 <- g4 + xlab("Percentage of Women in Parliament (2009)")
+g4 <- g4 + ylab("Number of Countries")
+g4 <- g4 + facet_wrap(~ region)
+g4 <- g4 + theme(axis.text = element_text(size = 10))
+g4
+```
+
+Obtain numerical summaries of gini04 for different regions
+
+```{r}
+by(world.data$gini04, world.data$region, summary)
+```
+
+Calculate standard deviation of gini04 for different regions
+
+```{r}
+by(world.data$gini04, world.data$region, sd, na.rm = TRUE)
+```
+
+Which region has the smallest dispersion? It looks like either Western Europe or Scandinavia due to the regions having more similar (and usually lower) levels of inequality across countries.
