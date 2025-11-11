@@ -1,0 +1,258 @@
+---
+title: "HW12"
+author: "Graham Jones"
+date: "November 10, 2025"
+format:
+  pdf:
+    number-sections: false
+    toc: false
+    pdf-engine: xelatex
+    fig-cap-location: bottom
+    fig-align: center
+    colorlinks: true
+    linkcolor: RoyalBlue
+    urlcolor: RoyalBlue
+fontsize: 11pt
+geometry: margin=1in
+highlight-style: tango
+execute:
+  echo: true
+  warning: false
+  message: false
+  error: true
+code-fold: true
+code-summary: "Show code"
+code-overflow: wrap
+editor: visual
+---
+
+# Load setup and themes
+# I began by loading the required packages and setting consistent figure styles.
+```{r}
+suppressPackageStartupMessages({
+  library(effects)
+  library(ggplot2)
+})
+knitr::opts_chunk$set(fig.width = 6.5, fig.height = 4.2, dpi = 300, fig.align = "center")
+theme_set(
+  theme_minimal(base_size = 11) +
+    theme(
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(face = "bold"),
+      legend.position = "right"
+    )
+)
+```
+# Load dataset
+# Here I import the dataset from the provided Dropbox link.
+```{r}
+world <- read.csv("https://www.dropbox.com/scl/fi/1dzteukcseiy51pjbgf0b/world.csv?rlkey=pm9u4jcoszwyy4awlxulc0nwa&e=1&st=msttbjgs&dl=1")
+```
+# Clean pr_sys variable
+# I ensure that the electoral system variable is labeled properly as “Non-PR” and “PR.”
+```{r}
+if (!("pr_sys" %in% names(world))) stop("Column 'pr_sys' not found in dataset.")
+if (!is.factor(world$pr_sys)) {
+  vals <- sort(unique(na.omit(world$pr_sys)))
+  if (all(vals %in% c(0, 1))) {
+    world$pr_sys <- factor(world$pr_sys, levels = c(0, 1), labels = c("Non-PR", "PR"))
+  } else {
+    world$pr_sys <- factor(world$pr_sys)
+  }
+}
+print(paste0("pr_sys levels: ", paste(levels(world$pr_sys), collapse = ", ")))
+```
+# Q1) Constant-only model
+# I start with a constant-only model to find the mean female representation.
+```{r}
+model1 <- lm(women09 ~ 1, data = world)
+summary(model1)
+```
+# Q2) Model with per capita GDP
+# I add GDP per capita to test if wealthier countries have higher representation.
+```{r}
+model2 <- lm(women09 ~ gdp_10_thou, data = world)
+summary(model2)
+```
+# Q3) Graph: Effect of per capita GDP
+# I visualize how GDP affects female representation with confidence bands.
+```{r}
+df_eff2 <- as.data.frame(effects::Effect("gdp_10_thou", model2))
+ggplot(df_eff2, aes(x = gdp_10_thou, y = fit)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.18) +
+  geom_line(linewidth = 0.9) +
+  labs(
+    title = "Effect of Per Capita GDP on Female Representation",
+    x = "GDP (in $10,000s)",
+    y = "Predicted Female Representation (%)"
+  )
+```
+# Q4) Model with electoral system dummy
+# I now include electoral system type to test its independent effect.
+```{r}
+model3 <- lm(women09 ~ pr_sys, data = world)
+summary(model3)
+```
+# Q5) Graph: Effect of electoral system
+# I plot predicted values by system type.
+```{r}
+df_eff3 <- as.data.frame(effects::Effect("pr_sys", model3))
+ggplot(df_eff3, aes(x = pr_sys, y = fit)) +
+  geom_col(width = 0.6) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.15) +
+  labs(
+    title = "Effect of Electoral System on Female Representation",
+    x = "Electoral System",
+    y = "Predicted Female Representation (%)"
+  )
+```
+# Q6) Model with BOTH GDP and electoral system
+# I combine both predictors to see how they behave together.
+```{r}
+model4 <- lm(women09 ~ gdp_10_thou + pr_sys, data = world)
+summary(model4)
+```
+# Q7) Compare model fit (R² and AIC)
+# I compare model performance to see which fits best.
+```{r}
+print(c(
+  R2_m1 = summary(model1)$r.squared,
+  R2_m2 = summary(model2)$r.squared,
+  R2_m3 = summary(model3)$r.squared,
+  R2_m4 = summary(model4)$r.squared
+))
+AIC(model1, model2, model3, model4)
+```
+# Q8) Graph: GDP effect for PR countries only
+# I show the relationship between GDP and representation within PR systems.
+```{r}
+target_level <- if ("PR" %in% levels(world$pr_sys)) "PR" else levels(world$pr_sys)[1]
+if (!("PR" %in% levels(world$pr_sys))) {
+  print(paste0("Note: 'PR' not found. Using level '", target_level, "' instead."))
+}
+gseq <- seq(min(world$gdp_10_thou, na.rm = TRUE),
+            max(world$gdp_10_thou, na.rm = TRUE),
+            length.out = 100)
+nd_pr <- data.frame(
+  gdp_10_thou = gseq,
+  pr_sys = factor(target_level, levels = levels(world$pr_sys))
+)
+pred_pr <- predict(model4, newdata = nd_pr, se.fit = TRUE)
+nd_pr$fit <- pred_pr$fit
+nd_pr$lwr <- pred_pr$fit - 1.96 * pred_pr$se.fit
+nd_pr$upr <- pred_pr$fit + 1.96 * pred_pr$se.fit
+ggplot(nd_pr, aes(x = gdp_10_thou, y = fit)) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.18) +
+  geom_line(linewidth = 0.9) +
+  labs(
+    title = paste0("Effect of GDP on Female Representation (", target_level, " Only)"),
+    x = "GDP (in $10,000s)",
+    y = "Predicted Female Representation (%)"
+  )
+```
+# Q9) Interaction (GDP × PR)
+# I test for an interaction to see if GDP’s impact differs between PR and Non-PR systems.
+```{r}
+model_interact <- lm(women09 ~ gdp_10_thou * pr_sys, data = world)
+gseq <- seq(min(world$gdp_10_thou, na.rm = TRUE),
+            max(world$gdp_10_thou, na.rm = TRUE),
+            length.out = 100)
+nd_all <- expand.grid(
+  gdp_10_thou = gseq,
+  pr_sys = levels(world$pr_sys)
+)
+pred_all <- predict(model_interact, newdata = nd_all, se.fit = TRUE)
+nd_all$fit <- pred_all$fit
+nd_all$lwr <- nd_all$fit - 1.96 * pred_all$se.fit
+nd_all$upr <- nd_all$fit + 1.96 * pred_all$se.fit
+ggplot(nd_all, aes(x = gdp_10_thou, y = fit, color = pr_sys, fill = pr_sys)) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.12, linewidth = 0) +
+  geom_line(linewidth = 0.9) +
+  labs(
+    title = "Effect of GDP by Electoral System",
+    x = "GDP (in $10,000s)",
+    y = "Predicted Female Representation (%)",
+    color = "System", fill = "System"
+  )
+```
+# Q10) Region model
+# I now test for regional variation in women’s representation.
+```{r}
+model_region <- lm(women09 ~ region, data = world)
+summary(model_region)
+```
+# Q11) Graph: Female representation by region
+# I plot predicted averages by region.
+```{r}
+df_eff_region <- as.data.frame(effects::Effect("region", model_region))
+ggplot(df_eff_region, aes(x = region, y = fit)) +
+  geom_col(width = 0.6) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.15) +
+  labs(
+    title = "Female Representation by Region",
+    x = "Region",
+    y = "Predicted Female Representation (%)"
+  )
+```
+# Q12) Model: GDP controlling for region
+# I control for GDP to isolate its impact within regional context.
+```{r}
+model_gdp_region <- lm(women09 ~ gdp_10_thou + region, data = world)
+summary(model_gdp_region)
+```
+# Clean frac_eth3 variable
+# Before modeling ethnic fractionalization, I clean missing and blank entries.
+```{r}
+if (!"frac_eth3" %in% names(world)) stop("Column 'frac_eth3' not found in dataset.")
+KEEP_MISSING  <- FALSE
+MISSING_LABEL <- "Missing"
+x <- as.character(world$frac_eth3)
+is_blank <- !is.na(x) & nchar(trimws(x)) == 0
+x[is_blank] <- NA_character_
+if (KEEP_MISSING) {
+  x[is.na(x)] <- MISSING_LABEL
+  world$frac_eth3 <- factor(x)
+  print("Kept missing/blank values as labeled.")
+} else {
+  keep <- !is.na(x)
+  dropped <- sum(!keep)
+  world <- world[keep, , drop = FALSE]
+  world$frac_eth3 <- factor(x[keep])
+  print(paste("Dropped", dropped, "rows with missing/blank frac_eth3."))
+}
+print(paste("Final frac_eth3 levels:", paste(levels(world$frac_eth3), collapse = ", ")))
+```
+# Q13) Ethnic fractionalization model
+# I estimate representation across ethnic fractionalization categories.
+```{r}
+model_ethnic <- lm(women09 ~ frac_eth3, data = world)
+summary(model_ethnic)
+```
+# Q14) Graph: Effect of ethnic fractionalization
+# I visualize predicted representation by fractionalization level.
+```{r}
+eff_eth <- effects::Effect("frac_eth3", model_ethnic)
+df_eff_eth <- as.data.frame(eff_eth)
+ggplot(df_eff_eth, aes(x = frac_eth3, y = fit)) +
+  geom_col(width = 0.6) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.15) +
+  geom_text(aes(label = sprintf("%.1f", fit)), vjust = -0.5, size = 3.3) +
+  labs(
+    title = "Effect of Ethnic Fractionalization on Female Representation",
+    x = "Ethnic Fractionalization Level",
+    y = "Predicted Female Representation (%)"
+  ) +
+  ylim(0, max(df_eff_eth$upper, na.rm = TRUE) * 1.1)
+```
+
+
+
+
+
+
+
+
+
+
+
+
