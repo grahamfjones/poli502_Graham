@@ -1,0 +1,67 @@
+---
+title: "Birthday Problem & Monty Hall Game"
+name: Graham Jones
+date: 10/9/2025
+format: html
+editor: visual
+---
+# Birthday Problem
+```{r}
+set.seed(200)
+n <- 100 #people in room
+triple <- 0 #counter for room with one or more 3+ matches 
+numberofruns <- 10000
+for(i in 1:numberofruns){
+  birthdays <- sample(365, n, replace = TRUE)
+  #This is a frequency table of birthdays to see if any day occurs 3 or more times
+  if (max(table(birthdays)) >= 3){
+    triple <- triple + 1 # room found with at least one triple
+  }
+}
+
+#Calculate and print estimated probability
+p_triple <- triple / numberofruns 
+print(p_triple)
+```
+# The Monty Hall Game
+```{r}
+set.seed(100)
+numberofruns <- 100000
+
+wins_if_stay <- 0   #starting with zero wins for 'stay' approach
+wins_if_switch <- 0   #starting with zero wins for 'switch' approach
+
+for (t in seq_len(numberofruns)) {
+  # randomly place car behind one of the three doors
+  car <- sample(1:3, 1)
+  # contestant picks a door randomly
+  pick <- sample(1:3, 1)
+
+  # host opens a door that:is not the contestant pick and does not have the car
+  # If there are two possible doors host can open, he chooses one of them.
+  remaining <- setdiff(1:3, c(pick, car))
+  if (length(remaining) == 0) {
+    # contestant picked car; host opens one of the two doors with a goat
+    hostopensdoor <- sample(setdiff(1:3, pick), 1)
+  } else {
+    # there is exactly one door that is neither contestant pick nor the car, host opens it
+    hostopensdoor <- remaining[1]
+  }
+
+  # the door available to switch to is the one not pick and not host_opens
+  switch_to <- setdiff(1:3, c(pick, hostopensdoor))
+
+  # if staying, you win if your original pick is car
+  if (pick == car) wins_if_stay <- wins_if_stay + 1
+  # if switching, you win if the other door that is unopened has the car
+  if (switch_to == car) wins_if_switch <- wins_if_switch + 1
+}
+
+p_stay <- wins_if_stay / numberofruns
+p_switch <- wins_if_switch / numberofruns
+
+print(paste0("P(win if stay)   = ", round(p_stay, 6)))
+print(paste0("P(win if switch) = ", round(p_switch, 6)))
+
+
+```
