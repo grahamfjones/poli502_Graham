@@ -1,0 +1,472 @@
+---
+title: "POLI502 Final Exam"
+author: "Graham Jones"
+date: "2025-12-05"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+#Set global chunk options and load packages
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+# Load required libraries
+library(tidyverse)
+library(stargazer)
+library(pROC)
+library(ggplot2)
+```
+
+# Question 1: Exploring Fare by Gender
+
+```{r q1}
+# Load Titanic dataset
+td <- read.csv("titanic2.csv")
+
+# Ensure female is treated as a factor
+td$female <- factor(td$female)
+
+# Explore relationship between female and fare
+# Summarize fares by gender: mean, median, standard deviation, and count
+fare_by_gender <- td %>%
+  group_by(female) %>%
+  summarise(
+    mean_fare = mean(fare, na.rm = TRUE),
+    median_fare = median(fare, na.rm = TRUE),
+    sd_fare = sd(fare, na.rm = TRUE),
+    n = n()
+  )
+# Show the summary table
+print(fare_by_gender)
+
+# Draw a boxplot to compare fare distributions by gender
+ggplot(td, aes(x = female, y = fare, fill = female)) +
+  geom_boxplot() +
+  labs(title = "Distribution of Ticket Fare by Gender",
+       x = "Gender", y = "Fare (GBP)") +
+  theme_minimal()
+
+# Female passengers appear to have higher median and mean fares
+# compared to male passengers, suggesting they tended to purchase more expensive tickets.
+```
+
+# Question 2: Bivariate Statistical Test
+
+```{r q2}
+# Perform t-test to compare fares between genders
+t_test_result <- t.test(fare ~ female, data = td)
+# Display the t-test result
+print(t_test_result)
+
+# The t-test shows that female passengers had significantly higher ticket fares than male 
+# passengers (p < 0.05). The mean fare for female passengers was approximately £44.5 
+# compared to £25.5 for male passengers. Therefore, we can conclude that female passengers 
+# tended to have more expensive tickets than male passengers.
+```
+
+# Question 3a: Logit Models
+
+```{r q3a}
+# Estimate logit model with original fare as a predictor
+model1 <- glm(survived ~ fare + female + child, 
+              data = td, family = binomial(link = "logit"))
+
+# Estimate a second logit model using log(fare + 1) instead of fare
+model2 <- glm(survived ~ I(log(fare + 1)) + female + child, 
+              data = td, family = binomial(link = "logit"))
+
+# Show both models in a stargazer table
+stargazer(model1, model2, type = "text",
+          title = "Logit Models of Passenger Survival",
+          column.labels = c("Original Fare", "Log Fare"),
+          covariate.labels = c("Fare", "Log(Fare+1)", "Female", "Child"),
+          dep.var.labels = "Survived")
+```
+
+# Question 3b: Model Comparison
+
+```{r q3b}
+# Compare AIC values of the two models (lower AIC = better fit)
+aic_comparison <- data.frame(
+  Model = c("Model 1 (Original Fare)", "Model 2 (Log Fare)"),
+  AIC = c(AIC(model1), AIC(model2))
+)
+# Show the AIC comparison
+print(aic_comparison)
+
+# Model 2 with log(fare) performs better because it has a lower AIC value.
+```
+
+# Question 3c: Effect Graphs
+
+```{r q3c}
+# Find the most common value of child to hold constant (mode)
+child_mode <- names(sort(table(td$child), decreasing = TRUE))[1]
+
+# Create prediction data for Model 1 (vary fare from 0 to 500)
+pred_data1 <- data.frame(
+  fare   = seq(0, 500, length.out = 100),
+  # Hold gender constant at "Female"
+  female = factor("Female", levels = levels(td$female)),
+  # Hold child at its most common category (character, matching the model)
+  child  = child_mode
+)
+# Get predicted survival probabilities from Model 1
+pred_data1$predicted_prob <- predict(model1, newdata = pred_data1, type = "response")
+
+# Plot the effect of fare on survival (original fare, Model 1)
+ggplot(pred_data1, aes(x = fare, y = predicted_prob)) +
+  geom_line(color = "blue", size = 1) +
+  labs(title = "Effect of Fare on Survival (Original Fare)",
+       x = "Fare (GBP)", y = "Predicted Probability of Survival") +
+  theme_minimal()
+
+# Create prediction data for Model 2 (same fare range and constants)
+pred_data2 <- data.frame(
+  fare   = seq(0, 500, length.out = 100),
+  female = factor("Female", levels = levels(td$female)),
+  child  = child_mode
+)
+# Get predicted survival probabilities from Model 2
+pred_data2$predicted_prob <- predict(model2,
+                                     newdata = pred_data2,
+                                     type = "response")
+
+# Plot the effect of fare on survival (log fare model, Model 2)
+ggplot(pred_data2, aes(x = fare, y = predicted_prob)) +
+  geom_line(color = "red", size = 1) +
+  labs(title = "Effect of Fare on Survival (Log Fare)",
+       x = "Fare (GBP)", y = "Predicted Probability of Survival") +
+  theme_minimal()
+```
+
+# Question 3d: Graph Comparison
+
+```{r q3d}
+# The graph with the original fare variable suggests that the effect of fare on
+# survival is non-linear. At lower fare values, the predicted probability of
+# survival increases rapidly as fare rises, but this increase slows down at higher
+# fare levels, indicating diminishing returns. This pattern indicates that the
+# marginal benefit of paying more for a ticket becomes smaller at the high end of
+# the fare distribution. In contrast, the graph based on the logged fare variable
+# shows a more linear relationship between fare and survival, with a steadier
+# increase in predicted survival probabilities across the fare range. Taken
+# together with the model fit statistics, these patterns make the logged-fare
+# specification more plausible as a description of how ticket price relates to
+# survival chances.
+```
+
+# Question 3e: Training and Test Sets
+
+```{r q3e}
+# Remove rows with missing fare so log(fare) is well-defined
+td_complete <- td %>% filter(!is.na(fare))
+
+# Set seed so the random split is reproducible
+set.seed(123)
+
+# Create training and test sets (80/20 split)
+train_id <- sample(1:nrow(td_complete), nrow(td_complete) * 0.8)
+train_data <- td_complete[train_id, ]
+test_data <- td_complete[-train_id, ]
+
+# Estimate model without logged fare (only female and child)
+model_no_fare <- glm(survived ~ female + child, 
+                     data = train_data, family = binomial(link = "logit"))
+
+# Estimate model with logged fare plus female and child on training data
+model_with_fare <- glm(survived ~ I(log(fare + 1)) + female + child, 
+                       data = train_data, family = binomial(link = "logit"))
+```
+
+# Question 3f: Stargazer Table for Training Models
+
+```{r q3f}
+# Show training-set models with and without log(fare) in a stargazer table (Q3f)
+stargazer(model_no_fare, model_with_fare, type = "text",
+          title = "Training Set Models",
+          column.labels = c("Without Fare", "With Log Fare"),
+          covariate.labels = c("Female", "Child", "Log(Fare+1)"),
+          dep.var.labels = "Survived")
+```
+
+# Question 3g: ROC Curves
+
+```{r q3g}
+# Predicted probabilities on the test set for both models
+pred_no_fare <- predict(model_no_fare, newdata = test_data, type = "response")
+pred_with_fare <- predict(model_with_fare, newdata = test_data, type = "response")
+
+# Create ROC objects (true outcome vs predicted probability)
+roc_no_fare <- roc(test_data$survived, pred_no_fare)
+roc_with_fare <- roc(test_data$survived, pred_with_fare)
+
+# Plot ROC curve for model without fare
+plot(roc_no_fare, col = "blue", main = "ROC Curves Comparison")
+# Add ROC curve for model with log(fare)
+plot(roc_with_fare, col = "red", add = TRUE)
+# Add legend labeling each curve
+legend("bottomright", legend = c("Without Fare", "With Log Fare"),
+       col = c("blue", "red"), lwd = 2)
+```
+
+# Question 3h: AUC Scores
+
+```{r q3h}
+# Calculate and report AUC scores
+auc_no_fare <- auc(roc_no_fare)
+auc_with_fare <- auc(roc_with_fare)
+
+#Print AUC scores to compare predictive accuracy
+print(paste("AUC without fare:", auc_no_fare))
+print(paste("AUC with log fare:", auc_with_fare))
+```
+
+# Question 3i: Model Performance Comparison
+
+```{r q3i}
+# The model with log(fare) performs better based on both the ROC curves and 
+# AUC scores. The ROC curve for the model with fare is positioned higher and more to the 
+# left, indicating better classification performance. Additionally, the AUC score is higher 
+# for the model with (log)fare, confirming its superior predictive ability.
+```
+
+# Question 4: Putnam Dataset - Civic Community Models
+
+```{r q4}
+# Load Putnam dataset
+putnam <- read.csv("putnam.csv")
+
+# Create North dummy variable: 1 = North, 0 = South
+putnam$North <- ifelse(putnam$NorthSouth == "North", 1, 0)
+
+# Model 1: Simple linear regression
+putnam_model1 <- lm(InstPerform ~ CivicCommunity, data = putnam)
+
+# Model 2: Additive model with North-South control
+putnam_model2 <- lm(InstPerform ~ CivicCommunity + North, data = putnam)
+
+# Model 3: Interactive model with different slopes by region
+putnam_model3 <- lm(InstPerform ~ CivicCommunity * North, data = putnam)
+
+# Show all three civic community models in one stargazer table
+stargazer(putnam_model1, putnam_model2, putnam_model3, type = "text",
+          title = "Regression Models: Institutional Performance and Civic Community",
+          column.labels = c("Simple", "Additive", "Interactive"),
+          dep.var.labels = "Institutional Performance")
+```
+
+# Question 5: Graphs for Civic Community Models
+
+```{r q5}
+# 5a: Prediction data for Model 1 across CivicCommunity range
+pred_data_p1 <- data.frame(
+  CivicCommunity = seq(min(putnam$CivicCommunity, na.rm = TRUE),
+                            max(putnam$CivicCommunity, na.rm = TRUE),
+                            length.out = 100)
+)
+pred_data_p1$predicted <- predict(putnam_model1, newdata = pred_data_p1)
+# Plot marginal effect of Civic Community (Model 1)
+ggplot(pred_data_p1, aes(x = CivicCommunity, y = predicted)) +
+  geom_line(color = "blue", size = 1) +
+  labs(title = "Marginal Effect of Civic Community Index (Model 1)",
+       x = "Civic Community Index", y = "Predicted Institutional Performance") +
+  theme_minimal()
+
+# 5b: Graphs for Model 2 (separate for North and South)
+pred_data_p2_north <- data.frame(
+  CivicCommunity = seq(min(putnam$CivicCommunity, na.rm = TRUE),
+                            max(putnam$CivicCommunity, na.rm = TRUE),
+                            length.out = 100),
+  North = 1
+)
+pred_data_p2_north$predicted <- predict(putnam_model2, newdata = pred_data_p2_north)
+#Prediction data for Model 2, North = 0
+pred_data_p2_south <- data.frame(
+  CivicCommunity = seq(min(putnam$CivicCommunity, na.rm = TRUE),
+                            max(putnam$CivicCommunity, na.rm = TRUE),
+                            length.out = 100),
+  North = 0
+)
+pred_data_p2_south$predicted <- predict(putnam_model2, newdata = pred_data_p2_south)
+# Plot marginal effect for Northern regions (Model 2)
+ggplot() +
+  geom_line(data = pred_data_p2_north, aes(x = CivicCommunity, y = predicted), 
+            color = "blue", size = 1) +
+  labs(title = "Marginal Effect of Civic Community Index - Northern Regions (Model 2)",
+       x = "Civic Community Index", y = "Predicted Institutional Performance") +
+  theme_minimal()
+# Plot marginal effect for Southern regions (Model 2)
+ggplot() +
+  geom_line(data = pred_data_p2_south, aes(x = CivicCommunity, y = predicted), 
+            color = "red", size = 1) +
+  labs(title = "Marginal Effect of Civic Community Index - Southern Regions (Model 2)",
+       x = "Civic Community Index", y = "Predicted Institutional Performance") +
+  theme_minimal()
+
+# 5c: Prediction data for Model 3 over CivicCommunity and North
+pred_data_p3 <- expand.grid(
+  CivicCommunity = seq(min(putnam$CivicCommunity, na.rm = TRUE),
+                            max(putnam$CivicCommunity, na.rm = TRUE),
+                            length.out = 100),
+  North = c(0, 1)
+)
+pred_data_p3$predicted <- predict(putnam_model3, newdata = pred_data_p3)
+# Label each row as "North" or "South" for plotting
+pred_data_p3$Region <- ifelse(pred_data_p3$North == 1, "North", "South")
+# Plot marginal effects by region (two panels, Model 3)
+ggplot(pred_data_p3, aes(x = CivicCommunity, y = predicted, color = Region)) +
+  geom_line(size = 1) +
+  facet_wrap(~Region) +
+  labs(title = "Marginal Effect of Civic Community Index by Region (Model 3)",
+       x = "Civic Community Index", y = "Predicted Institutional Performance") +
+  theme_minimal()
+```
+
+# Question 6: Spuriousness Analysis - Civic Community
+
+```{r q6}
+# The regional distinctions do not make the relationship between Institutional 
+# Performance and Civic Community Index spurious. In Model 1, we observe a strong positive 
+# relationship between civic community and institutional performance. When we control for 
+# the North-South division in Model 2, the civic community coefficient remains positive 
+# and statistically significant, suggesting the relationship is not entirely explained by 
+# regional differences. The interactive Model 3 shows that while the strength of the 
+# relationship may differ between regions, the fundamental positive association persists 
+# in both North and South. Therefore, civic community has an independent effect on 
+# institutional performance beyond regional distinctions.
+```
+
+# Question 7: Putnam Dataset - Models with Economic Modernization as main predictor
+
+```{r q7}
+# Model 1: Simple linear regression (InstPerform ~ EconModern)
+econ_model1 <- lm(InstPerform ~ EconModern, data = putnam)
+
+# Model 2: Additive model with EconModern + North
+econ_model2 <- lm(InstPerform ~ EconModern + North, data = putnam)
+
+# Model 3: Interactive model with EconModern * North
+econ_model3 <- lm(InstPerform ~ EconModern * North, data = putnam)
+
+# Show all three economic modernization models in one table
+stargazer(econ_model1, econ_model2, econ_model3, type = "text",
+          title = "Regression Models: Institutional Performance and Economic Modernization",
+          column.labels = c("Simple", "Additive", "Interactive"),
+          dep.var.labels = "Institutional Performance")
+```
+
+# Question 8: Graphs for Economic Modernization Models
+
+```{r q8}
+# 8a: Graph for Model 1 (EconModern range)
+pred_data_e1 <- data.frame(
+  EconModern = seq(min(putnam$EconModern, na.rm = TRUE),
+                          max(putnam$EconModern, na.rm = TRUE),
+                          length.out = 100)
+)
+pred_data_e1$predicted <- predict(econ_model1, newdata = pred_data_e1)
+#Plot marginal effect of Economic Modernization (Model 1)
+ggplot(pred_data_e1, aes(x = EconModern, y = predicted)) +
+  geom_line(color = "blue", size = 1) +
+  labs(title = "Marginal Effect of Economic Modernization (Model 1)",
+       x = "Economic Modernization", y = "Predicted Institutional Performance") +
+  theme_minimal()
+
+# 8b: Graphs for Model 2 (separate for North and South)
+pred_data_e2_north <- data.frame(
+  EconModern = seq(min(putnam$EconModern, na.rm = TRUE),
+                          max(putnam$EconModern, na.rm = TRUE),
+                          length.out = 100),
+  North = 1
+)
+pred_data_e2_north$predicted <- predict(econ_model2, newdata = pred_data_e2_north)
+# Prediction data for Model 2, North = 0
+pred_data_e2_south <- data.frame(
+  EconModern = seq(min(putnam$EconModern, na.rm = TRUE),
+                          max(putnam$EconModern, na.rm = TRUE),
+                          length.out = 100),
+  North = 0
+)
+pred_data_e2_south$predicted <- predict(econ_model2, newdata = pred_data_e2_south)
+# Plot marginal effect in Northern regions (Model 2)
+ggplot() +
+  geom_line(data = pred_data_e2_north, aes(x = EconModern, y = predicted), 
+            color = "blue", size = 1) +
+  labs(title = "Marginal Effect of Economic Modernization - Northern Regions (Model 2)",
+       x = "Economic Modernization", y = "Predicted Institutional Performance") +
+  theme_minimal()
+# Plot marginal effect in Southern regions (Model 2)
+ggplot() +
+  geom_line(data = pred_data_e2_south, aes(x = EconModern, y = predicted), 
+            color = "red", size = 1) +
+  labs(title = "Marginal Effect of Economic Modernization - Southern Regions (Model 2)",
+       x = "Economic Modernization", y = "Predicted Institutional Performance") +
+  theme_minimal()
+
+# 8c: Graph for Model 3 (two panels)
+pred_data_e3 <- expand.grid(
+  EconModern = seq(min(putnam$EconModern, na.rm = TRUE),
+                          max(putnam$EconModern, na.rm = TRUE),
+                          length.out = 100),
+  North = c(0, 1)
+)
+pred_data_e3$predicted <- predict(econ_model3, newdata = pred_data_e3)
+# Label region (North vs South) for each row
+pred_data_e3$Region <- ifelse(pred_data_e3$North == 1, "North", "South")
+# Plot marginal effect by region with two panels (Model 3)
+ggplot(pred_data_e3, aes(x = EconModern, y = predicted, color = Region)) +
+  geom_line(size = 1) +
+  facet_wrap(~Region) +
+  labs(title = "Marginal Effect of Economic Modernization by Region (Model 3)",
+       x = "Economic Modernization", y = "Predicted Institutional Performance") +
+  theme_minimal()
+```
+
+# Question 9: Spuriousness Analysis - Economic Modernization
+
+```{r q9}
+# The regional distinctions do make the relationship between Institutional 
+# Performance and Economic Modernization at least partially spurious. In Model 1, we 
+# observe a positive relationship between economic modernization and institutional 
+# performance. However, when we control for the North-South division in Model 2, the 
+# coefficient for economic modernization decreases substantially and may lose statistical 
+# significance, suggesting that much of the apparent effect was due to regional differences. 
+# The interactive Model 3 may show different slopes for North and South, indicating that 
+# the relationship varies by region. This suggests that regional distinctions confound 
+# the relationship between economic modernization and institutional performance, making 
+# the initial relationship at least partially spurious.
+```
+
+# Question 10: OLS Derivation
+
+```{r q10}
+# Derivation of OLS coefficient estimates for Y_i = α + β X_i + μ_i
+# 
+# The OLS estimator minimizes the sum of squared residuals:
+# min Σ(Y_i - α - β X_i)²
+# 
+# Taking the first-order conditions:
+# ∂/∂α Σ(Y_i - α - β X_i)² = 0
+# ∂/∂β Σ(Y_i - α - β X_i)² = 0
+# 
+# Take the derivative with respect to α and set to zero:
+# -2Σ(Y_i - α - β X_i) = 0
+# ΣY_i - nα - βΣX_i = 0
+# α = Ȳ - β X̄
+# 
+# Take the derivative with respect to β and set to zero:
+# -2Σ X_i(Y_i - α - β X_i) = 0
+# Σ X_i Y_i - αΣX_i - βΣX_i² = 0
+# 
+# Substitute α = Ȳ - β X̄ into the second equation:
+# Σ X_i Y_i - (Ȳ - β X̄)ΣX_i - βΣX_i² = 0
+# Σ X_i Y_i - ȲΣX_i + β X̄ΣX_i - βΣX_i² = 0
+# Σ X_i Y_i - nȲX̄ = β(ΣX_i² - nX̄²)
+# 
+# Therefore the slope estimate is:
+# β = Σ(X_i - X̄)(Y_i - Ȳ) / Σ(X_i - X̄)²
+# β = Cov(X,Y) / Var(X)
+# 
+# And the intercept estimate is:
+# α = Ȳ - β X̄
+```
